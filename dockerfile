@@ -1,5 +1,5 @@
 # Usar a imagem PHP oficial com Apache
-FROM php:7.4-apache
+FROM php:8.1-apache
 
 # Instalar as extensões necessárias para o MySQL e a AWS SDK
 RUN docker-php-ext-install mysqli \
