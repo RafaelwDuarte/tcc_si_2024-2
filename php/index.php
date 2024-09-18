@@ -1,15 +1,21 @@
 <?php
 
-require 'vendor/autoload.php';
+require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
 
 use Aws\SecretsManager\SecretsManagerClient; 
 use Aws\Exception\AwsException;
 
 function getSecret() {
-    $secretName = 'arn:aws:secretsmanager:us-east-1:999859181284:secret:acesso_rds-bcd8J0';
-    $region = 'us-east-1';
+    $secretName = getenv('AWS_SECRET_ARN'); // Obtém o ARN do segredo da variável de ambiente
+    $region = getenv('AWS_REGION'); // Obtém a região da variável de ambiente
 
-    // Crie o cliente do Secrets Manager
+    // Verifica se as variáveis de ambiente estão definidas
+    if (!$secretName || !$region) {
+        echo "Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.";
+        return null;
+    }
+
+    // Cria o cliente do Secrets Manager
     $client = new SecretsManagerClient([
         'version' => 'latest',
         'region' => $region
@@ -29,7 +35,7 @@ function getSecret() {
         return json_decode($secret, true);
 
     } catch (AwsException $e) {
-        // Output error message if fails
+        // Exibir mensagem de erro em caso de falha
         echo $e->getMessage();
         return null;
     }
@@ -39,10 +45,16 @@ function getSecret() {
 $credentials = getSecret();
 
 if ($credentials) {
-    $servername = 'app-refac.proxy-cze86866e6m1.us-east-1.rds.amazonaws.com';
+    $servername = getenv('RDS_PROXY_HOST'); // Obtém o host do RDS Proxy da variável de ambiente
     $username = $credentials['username'];  // Pega o username do segredo
     $password = $credentials['password'];  // Pega o password do segredo
-    $dbname = 'app_database';
+    $dbname = 'appref';  // Nome do banco de dados
+
+    // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
+    if (!$servername) {
+        echo "Erro: A variável de ambiente RDS_PROXY_HOST não está definida.";
+        exit;
+    }
 
     // Criar conexão
     $conn = new mysqli($servername, $username, $password, $dbname);
@@ -61,21 +73,21 @@ if ($credentials) {
         $sql = "SELECT id, name, email FROM users";
         $result = $conn->query($sql);
 
-        if ($result->num_rows > 0) {
+        if ($result && $result->num_rows > 0) {
             echo '<table class="table table-striped mt-3">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Name</th>
+                            <th>Nome</th>
                             <th>Email</th>
                         </tr>
                     </thead>
                     <tbody>';
             while ($row = $result->fetch_assoc()) {
                 echo '<tr>
-                        <td>' . $row["id"] . '</td>
-                        <td>' . $row["name"] . '</td>
-                        <td>' . $row["email"] . '</td>
+                        <td>' . htmlspecialchars($row["id"]) . '</td>
+                        <td>' . htmlspecialchars($row["name"]) . '</td>
+                        <td>' . htmlspecialchars($row["email"]) . '</td>
                       </tr>';
             }
             echo '</tbody></table>';
