@@ -8,6 +8,7 @@ services:
       - "8080:80" # Mapeia a porta 8080 da máquina host para a porta 80 do Apache no container
     volumes:
       - ./src:/var/www/html # Monta o código da aplicação
-
-volumes:
-  db_data:
+    environment:
+      - AWS_REGION=us-east-1 # Definir a região da AWS
+      - SECRET_ARN=arn:aws:secretsmanager:us-east-1:999859181284:secret:acesso_rds-bcd8J0
+      - RDS_PROXY_HOST=app-refac.proxy-cze86866e6m1.us-east-1.rds.amazonaws.com
