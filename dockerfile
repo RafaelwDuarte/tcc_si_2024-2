@@ -7,12 +7,16 @@ RUN docker-php-ext-install mysqli \
     && apt-get install -y unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Instalar a AWS SDK via Composer
-COPY composer.json /var/www/html/
+# Definir o diretório de trabalho
 WORKDIR /var/www/html/
+
+# Copiar o arquivo composer.json
+COPY composer.json /var/www/html/
+
+# Instalar as dependências do Composer
 RUN composer install
 
-# Copiar o código da aplicação PHP para o diretório padrão do Apache
+# Copiar o código PHP para o diretório do Apache
 COPY ./php/ /var/www/html/
 
 # Expor a porta 80 para o Apache
