@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  php:
+    build: .
+    container_name: php-app
+    ports:
+      - "8080:80" # Mapeia a porta 8080 da máquina host para a porta 80 do Apache no container
+    volumes:
+      - ./src:/var/www/html # Monta o código da aplicação
+
+volumes:
+  db_data:
