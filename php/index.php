@@ -1,30 +1,7 @@
 <?php
 session_start();
 
-// Verifique se o cabeçalho de autenticação do ALB está presente
-if (!isset($_SERVER['HTTP_X_AMZN_OIDC_DATA'])) {
-    // Usuário não autenticado, exiba uma mensagem de erro
-    echo '<div class="alert alert-danger" role="alert">
-            Acesso negado. Usuário não autenticado.
-          </div>';
-    exit();
-}
-
-// Decodifique o token JWT recebido do ALB no cabeçalho
-$idToken = $_SERVER['HTTP_X_AMZN_OIDC_DATA'];
-$tokenParts = explode('.', $idToken);
-$tokenPayload = base64_decode(str_replace('_', '/', str_replace('-','+', $tokenParts[1])));
-$payload = json_decode($tokenPayload, true);
-
-// Verifique se o usuário pertence ao grupo "acesso_nivel1"
-if (!isset($payload['cognito:groups']) || !in_array('acesso_nivel1', $payload['cognito:groups'])) {
-    echo '<div class="alert alert-danger" role="alert">
-            Acesso negado. Você não pertence ao grupo "acesso_nivel1".
-          </div>';
-    exit();
-}
-
-// Se o usuário estiver autenticado e pertence ao grupo correto, prossiga com a conexão ao banco de dados
+// Removendo a verificação de autenticação para permitir o acesso direto à página
 
 // Parâmetros de conexão ao banco de dados
 $servername = getenv('RDS_PROXY_HOST');  // Definido nas variáveis de ambiente do ECS
