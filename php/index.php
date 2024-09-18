@@ -1,54 +1,55 @@
 <?php
 session_start();
 
-// Check if the user is authenticated via ALB
+// Verifique se o cabeçalho de autenticação do ALB está presente
 if (!isset($_SERVER['HTTP_X_AMZN_OIDC_DATA'])) {
-    // User is not authenticated, redirect to an error page or show an error message
+    // Usuário não autenticado, exiba uma mensagem de erro
     echo '<div class="alert alert-danger" role="alert">
             Acesso negado. Usuário não autenticado.
           </div>';
     exit();
 }
 
-// Decode the JWT token from the ALB header
+// Decodifique o token JWT recebido do ALB no cabeçalho
 $idToken = $_SERVER['HTTP_X_AMZN_OIDC_DATA'];
-$tokenPayload = explode('.', $idToken)[1];
-$tokenPayload = json_decode(base64_decode(str_replace('_', '/', str_replace('-','+', $tokenPayload))), true);
+$tokenParts = explode('.', $idToken);
+$tokenPayload = base64_decode(str_replace('_', '/', str_replace('-','+', $tokenParts[1])));
+$payload = json_decode($tokenPayload, true);
 
-// Check if the user belongs to the required Cognito group
-if (!isset($tokenPayload['cognito:groups']) || !in_array('acesso_nivel1', $tokenPayload['cognito:groups'])) {
+// Verifique se o usuário pertence ao grupo "acesso_nivel1"
+if (!isset($payload['cognito:groups']) || !in_array('acesso_nivel1', $payload['cognito:groups'])) {
     echo '<div class="alert alert-danger" role="alert">
             Acesso negado. Você não pertence ao grupo "acesso_nivel1".
           </div>';
     exit();
 }
 
-// User is authenticated and belongs to the required group
-// Proceed with database connection and data retrieval
+// Se o usuário estiver autenticado e pertence ao grupo correto, prossiga com a conexão ao banco de dados
 
-// Database connection parameters
-$servername = getenv('RDS_PROXY_HOST');
+// Parâmetros de conexão ao banco de dados
+$servername = getenv('RDS_PROXY_HOST');  // Definido nas variáveis de ambiente do ECS
 $username = getenv('MYSQL_USER');
 $password = getenv('MYSQL_PASSWORD');
 $dbname = getenv('MYSQL_DATABASE');
 
-// Create connection
+// Crie a conexão com o MySQL
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Check connection
+// Verifique se a conexão foi bem-sucedida
 if ($conn->connect_error) {
     die('<div class="alert alert-danger" role="alert">
             Conexão falhou: ' . $conn->connect_error . '
          </div>');
 }
 
-// Variable to control the display of results
+// Variável de controle para exibir os resultados
 $showUsers = isset($_POST['show_users']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Refact App PHP - MySQL Data Viewer</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -81,7 +82,7 @@ $showUsers = isset($_POST['show_users']);
                 </div>
                 <div class="card-body">
                     <?php
-                    // SQL query to fetch data
+                    // SQL para obter os usuários
                     $sql = "SELECT id, name, email FROM users";
                     $result = $conn->query($sql);
 
@@ -120,5 +121,6 @@ $showUsers = isset($_POST['show_users']);
 </html>
 
 <?php
+// Feche a conexão com o banco de dados
 $conn->close();
 ?>
