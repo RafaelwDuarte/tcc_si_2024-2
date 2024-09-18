@@ -14,7 +14,7 @@ WORKDIR /var/www/html/
 COPY composer.json /var/www/html/
 
 # Instalar as dependências do Composer
-RUN composer install
+#RUN composer install
 
 # Copiar o código PHP para o diretório do Apache
 COPY ./php/ /var/www/html/
