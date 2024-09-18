@@ -1,103 +1,106 @@
 <?php
-session_start();
+require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
 
-// Removendo a verificação de autenticação para permitir o acesso direto à página
+use Aws\SecretsManager\SecretsManagerClient; 
+use Aws\Exception\AwsException;
 
-// Parâmetros de conexão ao banco de dados
-$servername = getenv('RDS_PROXY_HOST');  // Definido nas variáveis de ambiente do ECS
-$username = getenv('MYSQL_USER');
-$password = getenv('MYSQL_PASSWORD');
-$dbname = getenv('MYSQL_DATABASE');
+function getSecret() {
+    $secretName = getenv('AWS_SECRET_ARN'); // Obtém o ARN do segredo da variável de ambiente
+    $region = getenv('AWS_REGION'); // Obtém a região da variável de ambiente
 
-// Crie a conexão com o MySQL
-$conn = new mysqli($servername, $username, $password, $dbname);
+    // Verifica se as variáveis de ambiente estão definidas
+    if (!$secretName || !$region) {
+        echo "Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.";
+        return null;
+    }
 
-// Verifique se a conexão foi bem-sucedida
-if ($conn->connect_error) {
-    die('<div class="alert alert-danger" role="alert">
-            Conexão falhou: ' . $conn->connect_error . '
-         </div>');
+    // Cria o cliente do Secrets Manager
+    $client = new SecretsManagerClient([
+        'version' => 'latest',
+        'region' => $region
+    ]);
+
+    try {
+        $result = $client->getSecretValue([
+            'SecretId' => $secretName,
+        ]);
+
+        if (isset($result['SecretString'])) {
+            $secret = $result['SecretString'];
+        } else {
+            $secret = base64_decode($result['SecretBinary']);
+        }
+
+        return json_decode($secret, true);
+
+    } catch (AwsException $e) {
+        // Exibir mensagem de erro em caso de falha
+        echo $e->getMessage();
+        return null;
+    }
 }
 
-// Variável de controle para exibir os resultados
-$showUsers = isset($_POST['show_users']);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refact App PHP - MySQL Data Viewer</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center mb-4">MySQL Data Viewer</h1>
+// Obter o segredo
+$credentials = getSecret();
 
-        <div class="card">
-            <div class="card-header">
-                <h2>Status da Conexão</h2>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-success" role="alert">
-                    Conectado com sucesso ao MySQL via Proxy RDS!
-                </div>
-            </div>
-        </div>
+if ($credentials) {
+    $servername = getenv('RDS_PROXY_HOST'); // Obtém o host do RDS Proxy da variável de ambiente
+    $username = $credentials['username'];  // Pega o username do segredo
+    $password = $credentials['password'];  // Pega o password do segredo
+    $dbname = 'appref';  // Nome do banco de dados
 
-        <div class="mt-4">
-            <form method="POST">
-                <button type="submit" name="show_users" class="btn btn-primary btn-lg btn-block">Mostrar Usuários</button>
-            </form>
-        </div>
+    // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
+    if (!$servername) {
+        echo "Erro: A variável de ambiente RDS_PROXY_HOST não está definida.";
+        exit;
+    }
 
-        <?php if ($showUsers): ?>
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h2>Lista de Usuários</h2>
-                </div>
-                <div class="card-body">
-                    <?php
-                    // SQL para obter os usuários
-                    $sql = "SELECT id, name, email FROM users";
-                    $result = $conn->query($sql);
+    // Criar conexão
+    $conn = new mysqli($servername, $username, $password, $dbname);
 
-                    if ($result && $result->num_rows > 0) {
-                        echo '<table class="table table-striped mt-3">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nome</th>
-                                        <th>Email</th>
-                                    </tr>
-                                </thead>
-                                <tbody>';
-                        while ($row = $result->fetch_assoc()) {
-                            echo '<tr>
-                                    <td>' . htmlspecialchars($row["id"]) . '</td>
-                                    <td>' . htmlspecialchars($row["name"]) . '</td>
-                                    <td>' . htmlspecialchars($row["email"]) . '</td>
-                                  </tr>';
-                        }
-                        echo '</tbody></table>';
-                    } else {
-                        echo '<div class="alert alert-info" role="alert">
-                                Nenhum dado encontrado.
-                              </div>';
-                    }
-                    ?>
-                </div>
-            </div>
-        <?php endif; ?>
-    </div>
+    // Verificar a conexão
+    if ($conn->connect_error) {
+        echo '<div class="alert alert-danger" role="alert">
+                Conexão falhou: ' . $conn->connect_error . '
+              </div>';
+    } else {
+        echo '<div class="alert alert-success" role="alert">
+                Conectado com sucesso ao MySQL via Proxy RDS!
+              </div>';
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+        // Exibir os dados da tabela (assumindo que existe uma tabela 'users')
+        $sql = "SELECT id, name, email FROM users";
+        $result = $conn->query($sql);
 
-<?php
-// Feche a conexão com o banco de dados
-$conn->close();
+        if ($result && $result->num_rows > 0) {
+            echo '<table class="table table-striped mt-3">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>';
+            while ($row = $result->fetch_assoc()) {
+                echo '<tr>
+                        <td>' . htmlspecialchars($row["id"]) . '</td>
+                        <td>' . htmlspecialchars($row["name"]) . '</td>
+                        <td>' . htmlspecialchars($row["email"]) . '</td>
+                      </tr>';
+            }
+            echo '</tbody></table>';
+        } else {
+            echo '<div class="alert alert-info" role="alert">
+                    Nenhum dado encontrado.
+                  </div>';
+        }
+    }
+
+    $conn->close();
+} else {
+    echo '<div class="alert alert-danger" role="alert">
+            Não foi possível recuperar as credenciais do Secrets Manager.
+          </div>';
+}
 ?>
