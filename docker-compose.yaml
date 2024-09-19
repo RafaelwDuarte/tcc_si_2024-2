@@ -9,4 +9,4 @@ services:
     volumes:
       - ./src:/var/www/html # Monta o código da aplicação
     environment:
-      - AWS_REGION=us-east-1 # Definir a região da AWS
+      - AWS_REGION=us-east-1

@@ -33,12 +33,14 @@ if (isset($_GET['code'])) {
     ]);
 
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Obtém o código de resposta HTTP
+    $curlError = curl_error($ch); // Verifica se houve erros no cURL
     curl_close($ch);
 
     $tokenData = json_decode($response, true);
 
     // Se o token for recebido com sucesso, salvar na sessão
-    if (isset($tokenData['id_token'])) {
+    if ($httpCode == 200 && isset($tokenData['id_token'])) {
         $_SESSION['id_token'] = $tokenData['id_token'];
         $_SESSION['user_logged_in'] = true;
 
@@ -46,7 +48,19 @@ if (isset($_GET['code'])) {
         header("Location: /");
         exit();
     } else {
-        echo "Erro ao obter o token.";
+        // Exibir informações detalhadas de erro
+        echo "Erro ao obter o token.<br>";
+        echo "Código HTTP: " . $httpCode . "<br>";
+
+        if ($curlError) {
+            echo "Erro cURL: " . $curlError . "<br>";
+        }
+
+        // Exibir a resposta completa do Cognito para debug
+        echo "Resposta do servidor: <br>";
+        echo "<pre>";
+        print_r($tokenData);
+        echo "</pre>";
     }
 } else {
     echo "Código de autorização não encontrado.";
