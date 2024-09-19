@@ -12,6 +12,7 @@ RUN composer install
 
 # Copie o código da aplicação PHP para o diretório padrão do Apache
 COPY ./php/ /var/www/html/
+COPY ./php/callback.php /var/www/html/callback.php
 
 # Exponha a porta 80 para o Apache
 EXPOSE 80
