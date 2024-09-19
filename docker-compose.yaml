@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile
     container_name: php-cognito-app
     ports:
-      - "81:81" # Mapeia a porta 81 da máquina host para a porta 81 do Apache no container
+      - "80:80" # Mapeia a porta 81 da máquina host para a porta 81 do Apache no container
     volumes:
       - ./php/php_cognito:/var/www/html # Monta o código da aplicação
     environment:
