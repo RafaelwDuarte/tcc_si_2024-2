@@ -20,4 +20,4 @@ COPY . /var/www/html/
 RUN composer install
 
 # Exponha a porta 80
-EXPOSE 80
+EXPOSE 81
