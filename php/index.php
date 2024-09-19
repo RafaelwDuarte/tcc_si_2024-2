@@ -4,6 +4,23 @@ require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
 use Aws\SecretsManager\SecretsManagerClient; 
 use Aws\Exception\AwsException;
 
+session_start();
+
+// Variáveis de ambiente para Cognito
+$cognitoDomain = getenv('COGNITO_DOMAIN');  // Domínio do Cognito
+$clientId = getenv('COGNITO_CLIENT_ID');  // ID do App Client
+$clientSecret = getenv('COGNITO_CLIENT_SECRET');  // Segredo do App Client
+$redirectUri = getenv('COGNITO_REDIRECT_URI');  // URL de redirecionamento após o login
+$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid+email";
+
+// Verificar se o usuário já está autenticado
+if (!isset($_SESSION['user_logged_in'])) {
+    // Se não estiver autenticado, redirecionar para o Cognito
+    header("Location: $authorizationUrl");
+    exit();
+}
+
+// Função para obter o segredo do AWS Secrets Manager
 function getSecret() {
     $secretName = getenv('AWS_SECRET_ARN'); // Obtém o ARN do segredo da variável de ambiente
     $region = getenv('AWS_REGION'); // Obtém a região da variável de ambiente
@@ -64,7 +81,6 @@ if ($credentials) {
     <head>
         <meta charset="UTF-8">
         <title>App_Refact</title>
-        <!-- Inclua aqui o CSS para o layout de fundo -->
         <style>
             body {
                 background-color: #f0f0f0; /* Cor de fundo */
@@ -129,6 +145,10 @@ if ($credentials) {
                 background-color: #d1ecf1;
                 border-color: #bee5eb;
             }
+            /* Estilos para o badge */
+            .badge-container {
+                margin-top: 20px;
+            }
         </style>
     </head>
     <body>
@@ -144,14 +164,24 @@ if ($credentials) {
                 Conectado com sucesso ao MySQL via Proxy RDS!
               </div>';
 
+        // Badge do SonarCloud
+        echo '<div class="badge-container">
+                <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
+              </div>';
+
         // Botão para ver usuários
         echo '<form method="post">
                 <button type="submit" name="ver_usuarios" class="btn">Ver Usuários</button>
               </form>';
 
+        // Caixa de pesquisa por email
+        echo '<form method="post">
+                <input type="text" name="search_email" placeholder="Pesquisar por email" />
+                <button type="submit" class="btn">Buscar</button>
+              </form>';
+
         // Exibir os dados da tabela apenas se o botão for clicado
         if (isset($_POST['ver_usuarios'])) {
-            // Exibir os dados da tabela (assumindo que existe uma tabela 'users')
             $sql = "SELECT id, name, email FROM users";
             $result = $conn->query($sql);
 
@@ -176,6 +206,37 @@ if ($credentials) {
             } else {
                 echo '<div class="alert alert-info" role="alert">
                         Nenhum dado encontrado.
+                      </div>';
+            }
+        }
+
+        // Exibir os resultados da pesquisa de email
+        if (isset($_POST['search_email']) && !empty($_POST['search_email'])) {
+            $email = $conn->real_escape_string($_POST['search_email']);
+            $sql = "SELECT id, name, email FROM users WHERE email = '$email'";
+            $result = $conn->query($sql);
+
+            if ($result && $result->num_rows > 0) {
+                echo '<table class="table table-striped mt-3">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>';
+                while ($row = $result->fetch_assoc()) {
+                    echo '<tr>
+                            <td>' . htmlspecialchars($row["id"]) . '</td>
+                            <td>' . htmlspecialchars($row["name"]) . '</td>
+                            <td>' . htmlspecialchars($row["email"]) . '</td>
+                          </tr>';
+                }
+                echo '</tbody></table>';
+            } else {
+                echo '<div class="alert alert-info" role="alert">
+                        Nenhum dado encontrado para o email: ' . htmlspecialchars($email) . '
                       </div>';
             }
         }
