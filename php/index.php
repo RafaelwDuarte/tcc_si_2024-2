@@ -7,11 +7,11 @@ use Aws\Exception\AwsException;
 session_start();
 
 // Variáveis de ambiente para Cognito
-$cognitoDomain = getenv('COGNITO_DOMAIN');  // Domínio do Cognito
+$cognitoDomain = getenv('COGNITO_DOMAIN');  // Domínio do Cognito, ex: https://<your-domain>.auth.<region>.amazoncognito.com
 $clientId = getenv('COGNITO_CLIENT_ID');  // ID do App Client
-$clientSecret = getenv('COGNITO_CLIENT_SECRET');  // Segredo do App Client
-$redirectUri = getenv('COGNITO_REDIRECT_URI');  // URL de redirecionamento após o login
-$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid+email";
+$clientSecret = getenv('COGNITO_CLIENT_SECRET');  // Segredo do App Client (se configurado)
+$redirectUri = getenv('COGNITO_REDIRECT_URI');  // URL de redirecionamento após o login, ex: https://<your-app>.com/callback
+$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid";
 
 // Verificar se o usuário já está autenticado
 if (!isset($_SESSION['user_logged_in'])) {
@@ -54,6 +54,51 @@ function getSecret() {
         // Exibir mensagem de erro em caso de falha
         echo $e->getMessage();
         return null;
+    }
+}
+
+// Função para trocar o código de autorização por um token
+function getTokens($code) {
+    global $clientId, $clientSecret, $redirectUri, $cognitoDomain;
+
+    $tokenUrl = "$cognitoDomain/oauth2/token";
+    $postData = [
+        'grant_type' => 'authorization_code',
+        'client_id' => $clientId,
+        'code' => $code,
+        'redirect_uri' => $redirectUri,
+    ];
+
+    $ch = curl_init($tokenUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Basic ' . base64_encode("$clientId:$clientSecret"),
+        'Content-Type: application/x-www-form-urlencoded',
+    ]);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($response, true);
+}
+
+// Se o código de autorização foi retornado, troque-o por tokens
+if (isset($_GET['code'])) {
+    $code = $_GET['code'];
+    $tokenData = getTokens($code);
+
+    if (isset($tokenData['id_token'])) {
+        // Salvar o token na sessão
+        $_SESSION['id_token'] = $tokenData['id_token'];
+        $_SESSION['user_logged_in'] = true;
+
+        // Redirecionar de volta para a página inicial
+        header("Location: /");
+        exit();
+    } else {
+        echo "Erro ao obter o token.";
     }
 }
 
