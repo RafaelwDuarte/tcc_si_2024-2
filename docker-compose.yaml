@@ -5,7 +5,7 @@ services:
     build: .
     container_name: php-app
     ports:
-      - "8080:80" # Mapeia a porta 8080 da máquina host para a porta 80 do Apache no container
+      - "80:80" # Mapeia a porta 8080 da máquina host para a porta 80 do Apache no container
     volumes:
       - ./src:/var/www/html # Monta o código da aplicação
     environment:
@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile
     container_name: php-cognito-app
     ports:
-      - "81:80" # Mapeia a porta 81 da máquina host para a porta 80 do Apache no container
+      - "81:81" # Mapeia a porta 81 da máquina host para a porta 80 do Apache no container
     volumes:
       - ./php/php_cognito:/var/www/html # Monta o código da aplicação
     environment:
