@@ -19,5 +19,5 @@ COPY . /var/www/html/
 # Instale as dependências PHP usando o Composer
 RUN composer install
 
-# Exponha a porta 81
-EXPOSE 81
+# Exponha a porta 80
+EXPOSE 80
