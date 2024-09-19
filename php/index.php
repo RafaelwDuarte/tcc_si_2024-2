@@ -1,16 +1,12 @@
 <?php
 require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
 
-use Aws\SecretsManager\SecretsManagerClient; 
-use Aws\Exception\AwsException;
-
 session_start();
 
 // Variáveis de ambiente para Cognito
-$cognitoDomain = getenv('COGNITO_DOMAIN');  // Domínio do Cognito, ex: https://<your-domain>.auth.<region>.amazoncognito.com
-$clientId = getenv('COGNITO_CLIENT_ID');  // ID do App Client
-$clientSecret = getenv('COGNITO_CLIENT_SECRET');  // Segredo do App Client (se configurado)
-$redirectUri = getenv('COGNITO_REDIRECT_URI'); // Obtém a URL correta da variável de ambiente ou defina-a manualmente
+$cognitoDomain = getenv('COGNITO_DOMAIN');
+$clientId = getenv('COGNITO_CLIENT_ID');
+$redirectUri = getenv('COGNITO_REDIRECT_URI');
 $authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid email";
 
 // Verificar se o usuário já está autenticado
