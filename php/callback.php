@@ -57,7 +57,7 @@ if (isset($_GET['code'])) {
         }
 
         // Exibir a resposta completa do Cognito para debug
-        echo "Resposta do servidor: <br>";
+        echo "Resposta completa do servidor: <br>";
         echo "<pre>";
         print_r($tokenData);
         echo "</pre>";
