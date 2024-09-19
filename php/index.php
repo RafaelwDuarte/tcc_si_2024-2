@@ -10,8 +10,8 @@ session_start();
 $cognitoDomain = getenv('COGNITO_DOMAIN');  // Domínio do Cognito, ex: https://<your-domain>.auth.<region>.amazoncognito.com
 $clientId = getenv('COGNITO_CLIENT_ID');  // ID do App Client
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');  // Segredo do App Client (se configurado)
-$redirectUri = getenv('COGNITO_REDIRECT_URI');  // URL de redirecionamento após o login, ex: https://<your-app>.com/callback
-$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid";
+$redirectUri = getenv('COGNITO_REDIRECT_URI'); // Obtém a URL correta da variável de ambiente ou defina-a manualmente
+$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid email";
 
 // Verificar se o usuário já está autenticado
 if (!isset($_SESSION['user_logged_in'])) {
