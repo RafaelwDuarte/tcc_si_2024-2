@@ -10,5 +10,15 @@ services:
       - ./src:/var/www/html # Monta o código da aplicação
     environment:
       - AWS_REGION=us-east-1 # Definir a região da AWS
-      - SECRET_ARN=arn:aws:secretsmanager:us-east-1:999859181284:secret:acesso_rds-bcd8J0
-      - RDS_PROXY_HOST=app-refac.proxy-cze86866e6m1.us-east-1.rds.amazonaws.com
+
+  php_cognito:
+    build:
+      context: ./php/php_cognito
+      dockerfile: Dockerfile
+    container_name: php-cognito-app
+    ports:
+      - "81:80" # Mapeia a porta 81 da máquina host para a porta 80 do Apache no container
+    volumes:
+      - ./php/php_cognito:/var/www/html # Monta o código da aplicação
+    environment:
+      - AWS_REGION=us-east-1 # Definir a região da AWS
