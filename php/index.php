@@ -1,249 +1,116 @@
 <?php
-require 'vendor/autoload.php';
+// Configurações iniciais: carregar variáveis de ambiente para Cognito e banco
+$region = getenv('AWS_REGION');
+$cognitoClientId = getenv('COGNITO_CLIENT_ID');
+$cognitoUserPoolId = getenv('COGNITO_USER_POOL_ID');
+$cognitoRegion = getenv('COGNITO_REGION');
+$secretArn = getenv('AWS_SECRET_ARN'); // Para banco de dados
+$rdsProxyEndpoint = getenv('RDS_PROXY_ENDPOINT');
 
+// Autenticação com Cognito
+require 'vendor/autoload.php'; // Carregar dependências via Composer (incluindo AWS SDK)
+
+use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\SecretsManager\SecretsManagerClient;
 use Aws\Exception\AwsException;
 
+// Iniciar cliente do Cognito com as variáveis de ambiente
+$cognitoClient = new CognitoIdentityProviderClient([
+    'region' => $cognitoRegion,
+    'version' => '2016-04-18',
+]);
+
+// Verificar login (simplificado)
 session_start();
-
-// Variáveis de ambiente para Cognito
-$cognitoDomain = getenv('COGNITO_DOMAIN');
-$clientId = getenv('COGNITO_CLIENT_ID');
-$clientSecret = getenv('COGNITO_CLIENT_SECRET');
-$redirectUri = getenv('COGNITO_REDIRECT_URI');
-$msgError =  "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema."
-
-// Função para obter o segredo do AWS Secrets Manager
-function getSecret() {
-    $secretName = getenv('AWS_SECRET_ARN'); // Obtém o ARN do segredo da variável de ambiente
-    $region = getenv('AWS_REGION'); // Obtém a região da variável de ambiente
-
-    // Verifica se as variáveis de ambiente estão definidas
-    if (!$secretName || !$region) {
-        error_log("Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.");
-        echo $msgError;
-        return null;
-    }
-
-    // Cria o cliente do Secrets Manager
-    $client = new SecretsManagerClient([
-        'version' => 'latest',
-        'region' => $region
-    ]);
-
-    try {
-        $result = $client->getSecretValue([
-            'SecretId' => $secretName,
-        ]);
-
-        if (isset($result['SecretString'])) {
-            $secret = $result['SecretString'];
-        } else {
-            $secret = base64_decode($result['SecretBinary']);
+if (!isset($_SESSION['user_logged_in'])) {
+    // Exibir tela de login (HTML básico)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['password'])) {
+        // Autenticação com AWS Cognito
+        try {
+            $result = $cognitoClient->adminInitiateAuth([
+                'AuthFlow' => 'ADMIN_NO_SRP_AUTH',
+                'ClientId' => $cognitoClientId,
+                'UserPoolId' => $cognitoUserPoolId,
+                'AuthParameters' => [
+                    'USERNAME' => $_POST['username'],
+                    'PASSWORD' => $_POST['password'],
+                ],
+            ]);
+            $_SESSION['user_logged_in'] = true;
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } catch (AwsException $e) {
+            echo "Erro de autenticação: " . $e->getMessage();
         }
-
-        return json_decode($secret, true);
-
-    } catch (AwsException $e) {
-        // Registra o erro e exibe uma mensagem amigável
-        error_log('Erro ao obter o segredo: ' . $e->getMessage());
-        echo "Não foi possível recuperar as credenciais do Secrets Manager.";
-        return null;
-    }
-}
-
-// Obter o segredo
-$credentials = getSecret();
-
-if ($credentials) {
-    $servername = getenv('RDS_PROXY_HOST'); // Obtém o host do RDS Proxy da variável de ambiente
-    $username = $credentials['username'];  // Pega o username do segredo
-    $password = $credentials['password'];  // Pega o password do segredo
-    $dbname = 'appref';  // Nome do banco de dados
-
-    // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
-    if (!$servername) {
-        error_log("Erro: A variável de ambiente RDS_PROXY_HOST não está definida.");
-        echo $msgError;
+    } else {
+        // Exibir formulário de login
+        echo '<form method="POST">';
+        echo 'Usuário: <input type="text" name="username" required><br>';
+        echo 'Senha: <input type="password" name="password" required><br>';
+        echo '<input type="submit" value="Login">';
+        echo '</form>';
         exit();
     }
+}
 
-    // Criar conexão
-    $conn = new mysqli($servername, $username, $password, $dbname);
+// Após login bem-sucedido, exibir interface
+echo '<h1>Bem-vindo!</h1>';
+echo '<form method="GET" action="' . $_SERVER['PHP_SELF'] . '">';
+echo '<button type="submit" name="action" value="list_users">Listar Usuários</button>';
+echo '<button type="submit" name="action" value="search_email">Pesquisar por E-mail</button>';
+echo '</form>';
 
-    // Início do layout HTML
-    echo '<!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <title>App_Refact</title>
-        <style>
-            body {
-                background-color: #f0f0f0; /* Cor de fundo */
-                font-family: Arial, sans-serif;
-            }
-            .container {
-                width: 80%;
-                margin: 0 auto;
-                background-color: #fff; /* Fundo branco para o conteúdo */
-                padding: 20px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                margin-top: 50px;
-            }
-            .btn {
-                display: inline-block;
-                background-color: #007bff; /* Azul */
-                color: #fff;
-                padding: 10px 20px;
-                text-decoration: none;
-                border-radius: 4px;
-                margin-top: 20px;
-                border: none;
-                cursor: pointer;
-            }
-            .btn:hover {
-                background-color: #0056b3; /* Azul mais escuro */
-            }
-            /* Estilos para a tabela */
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-            }
-            table, th, td {
-                border: 1px solid #ddd;
-            }
-            th, td {
-                padding: 8px;
-                text-align: left;
-            }
-            th {
-                background-color: #f2f2f2;
-            }
-            .alert {
-                padding: 15px;
-                margin-top: 20px;
-                border: 1px solid transparent;
-                border-radius: 4px;
-            }
-            .alert-success {
-                color: #155724;
-                background-color: #d4edda;
-                border-color: #c3e6cb;
-            }
-            .alert-danger {
-                color: #721c24;
-                background-color: #f8d7da;
-                border-color: #f5c6cb;
-            }
-            .alert-info {
-                color: #0c5460;
-                background-color: #d1ecf1;
-                border-color: #bee5eb;
-            }
-            /* Estilos para o badge */
-            .badge-container {
-                margin-top: 20px;
-            }
-        </style>
-    </head>
-    <body>
-    <div class="container">';
+// Conectar ao MySQL via RDS Proxy usando Secrets Manager
+$secretsClient = new SecretsManagerClient([
+    'region' => $region,
+    'version' => '2017-10-17',
+]);
 
-    // Verificar a conexão
-    if ($conn->connect_error) {
-        echo '<div class="alert alert-danger" role="alert">
-                Conexão falhou: ' . htmlspecialchars($conn->connect_error) . '
-              </div>';
-    } else {
-        echo '<div class="alert alert-success" role="alert">
-                Conectado com sucesso ao MySQL via Proxy RDS!
-              </div>';
+try {
+    // Recuperar segredos do RDS Proxy
+    $secret = $secretsClient->getSecretValue([
+        'SecretId' => $secretArn, // Usar o ARN para recuperar o segredo
+    ]);
+    $secretData = json_decode($secret['SecretString'], true);
 
-        // Badge do SonarCloud
-        echo '<div class="badge-container">
-                <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
-              </div>';
+    // Conectar ao banco de dados com as credenciais recuperadas
+    $pdo = new PDO(
+        "mysql:host={$rdsProxyEndpoint};dbname=your_database_name;charset=utf8",
+        $secretData['username'],
+        $secretData['password']
+    );
+    echo '<p>Conectado ao banco de dados RDS.</p>';
 
-        // Botão para ver usuários
-        echo '<form method="post">
-                <button type="submit" name="ver_usuarios" class="btn">Ver Usuários</button>
-              </form>';
-
-        // Caixa de pesquisa por email
-        echo '<form method="post">
-                <input type="text" name="search_email" placeholder="Pesquisar por email" />
-                <button type="submit" class="btn">Buscar</button>
-              </form>';
-
-        // Exibir os dados da tabela apenas se o botão for clicado
-        if (isset($_POST['ver_usuarios'])) {
-            $sql = "SELECT id, name, email FROM users";
-            $result = $conn->query($sql);
-
-            if ($result && $result->num_rows > 0) {
-                echo '<table class="table table-striped mt-3">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>';
-                while ($row = $result->fetch_assoc()) {
-                    echo '<tr>
-                            <td>' . htmlspecialchars($row["id"]) . '</td>
-                            <td>' . htmlspecialchars($row["name"]) . '</td>
-                            <td>' . htmlspecialchars($row["email"]) . '</td>
-                          </tr>';
-                }
-                echo '</tbody></table>';
+    // Operações com o banco de dados
+    if (isset($_GET['action'])) {
+        if ($_GET['action'] == 'list_users') {
+            // Listar usuários
+            $stmt = $pdo->query("SELECT name, email FROM users");
+            echo '<table border="1">';
+            echo '<tr><th>Nome</th><th>Email</th></tr>';
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                echo '<tr><td>' . htmlspecialchars($row['name']) . '</td><td>' . htmlspecialchars($row['email']) . '</td></tr>';
+            }
+            echo '</table>';
+        } elseif ($_GET['action'] == 'search_email' && isset($_GET['email'])) {
+            // Pesquisar por email
+            $stmt = $pdo->prepare("SELECT name, email FROM users WHERE email = :email");
+            $stmt->execute(['email' => $_GET['email']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
+                echo '<p>Usuário encontrado: ' . htmlspecialchars($user['name']) . ' (' . htmlspecialchars($user['email']) . ')</p>';
             } else {
-                echo '<div class="alert alert-info" role="alert">
-                        Nenhum dado encontrado.
-                      </div>';
-            }
-        }
-
-        // Exibir os resultados da pesquisa de email
-        if (isset($_POST['search_email']) && !empty($_POST['search_email'])) {
-            $email = $conn->real_escape_string($_POST['search_email']);
-            $sql = "SELECT id, name, email FROM users WHERE email = '$email'";
-            $result = $conn->query($sql);
-
-            if ($result && $result->num_rows > 0) {
-                echo '<table class="table table-striped mt-3">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>';
-                while ($row = $result->fetch_assoc()) {
-                    echo '<tr>
-                            <td>' . htmlspecialchars($row["id"]) . '</td>
-                            <td>' . htmlspecialchars($row["name"]) . '</td>
-                            <td>' . htmlspecialchars($row["email"]) . '</td>
-                          </tr>';
-                }
-                echo '</tbody></table>';
-            } else {
-                echo '<div class="alert alert-info" role="alert">
-                        Nenhum dado encontrado para o email: ' . htmlspecialchars($email) . '
-                      </div>';
+                echo '<p>Usuário não encontrado.</p>';
             }
         }
     }
-
-    echo '</div></body></html>';
-
-    $conn->close();
-} else {
-    echo '<div class="alert alert-danger" role="alert">
-            Não foi possível recuperar as credenciais do Secrets Manager.
-          </div>';
+} catch (AwsException $e) {
+    echo '<p>Erro ao conectar ao banco de dados RDS: ' . $e->getMessage() . '</p>';
 }
+
+// Badge do SonarCloud
+echo '<div class="badge-container" style="position:fixed;bottom:0;right:0;">
+        <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
+      </div>';
+
 ?>
