@@ -6,32 +6,12 @@ use Aws\Exception\AwsException;
 
 session_start();
 
-// Configurações de exibição de erros (opcional para depuração)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Variáveis de ambiente para Cognito
 $cognitoDomain = getenv('COGNITO_DOMAIN');
 $clientId = getenv('COGNITO_CLIENT_ID');
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
 $msgError =  "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema."
-
-// Verifica se as variáveis de ambiente estão definidas
-if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri) {
-    error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
-    echo $msgError;
-    exit();
-}
-
-// Verificar se o usuário já está autenticado
-if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
-    // Se não estiver autenticado, redirecionar para o Cognito
-    $authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid+email";
-    header("Location: $authorizationUrl");
-    exit();
-}
 
 // Função para obter o segredo do AWS Secrets Manager
 function getSecret() {
