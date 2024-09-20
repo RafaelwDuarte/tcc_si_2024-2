@@ -1,8 +1,10 @@
 <?php
 require 'vendor/autoload.php';
+
 use Aws\SecretsManager\SecretsManagerClient;
 use Aws\Exception\AwsException;
 use GuzzleHttp\Client;
+
 session_start();
 // Variáveis de ambiente para Cognito
 $cognitoDomain = getenv('COGNITO_DOMAIN');
