@@ -25,7 +25,7 @@ WORKDIR /var/www/html
 COPY ./php/ ./
 
 # Copie o composer.json e o composer.lock para o diretório de trabalho
-COPY composer.json composer.lock ./
+COPY composer.json ./
 
 # Instale as dependências do Composer
 RUN composer install --no-dev --no-interaction --prefer-dist
