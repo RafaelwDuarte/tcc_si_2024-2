@@ -7,12 +7,19 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     unzip \
     git \
+    libcurl4-openssl-dev \
     && docker-php-ext-install \
+    mysqli \
+    pdo_mysql \
     mbstring \
     zip \
+    curl \
     && docker-php-ext-enable \
+    mysqli \
+    pdo_mysql \
     mbstring \
-    zip
+    zip \
+    curl
 
 # Instale o Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
