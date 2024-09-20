@@ -1,7 +1,16 @@
 <?php
-include 'vendor/autoload.php';
-require 'autoload.php'
+require 'vendor/autoload.php';
+
 use Aws\SecretsManager\SecretsManagerClient;
+use Aws\Exception\AwsException;
+
+// Teste rápido
+$client = new SecretsManagerClient([
+    'version' => 'latest',
+    'region'  => 'us-east-1', // Substitua pela sua região
+]);
+
+echo 'AWS SDK está funcionando!';
 
 session_start();
 
