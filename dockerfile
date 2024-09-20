@@ -22,7 +22,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 WORKDIR /var/www/html
 
 # Copie o código da aplicação PHP para o diretório de trabalho
-COPY ./php/index.php /var/www/html
+COPY ./php/ ./
 
 # Copie o composer.json e o composer.lock para o diretório de trabalho
 COPY composer.json ./
