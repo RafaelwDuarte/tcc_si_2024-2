@@ -27,6 +27,7 @@ session_start();
 // Variáveis de ambiente para Cognito
 $cognitoDomain = getenv('COGNITO_DOMAIN');
 $clientId = getenv('COGNITO_CLIENT_ID');
+$clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
 $authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid email";
 
@@ -96,10 +97,25 @@ function getTokens($code) {
     ]);
 
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
 
-    return json_decode($response, true);
+    if ($httpCode == 200) {
+        return json_decode($response, true);
+    } else {
+        // Registra o erro e retorna null
+        $errorMessage = "Erro ao obter o token.\n";
+        $errorMessage .= "Código HTTP: " . $httpCode . "\n";
+        if ($curlError) {
+            $errorMessage .= "Erro cURL: " . $curlError . "\n";
+        }
+        $errorMessage .= "Resposta completa do servidor: \n" . $response;
+        error_log($errorMessage);
+        return null;
+    }
 }
+
 
 // Se o código de autorização foi retornado, troque-o por tokens
 if (isset($_GET['code'])) {
