@@ -20,8 +20,8 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Defina o diretório de trabalho
 WORKDIR /var/www/html
 
-# Copie o composer.json e o composer.lock (se existir)
-COPY composer.json composer.lock ./
+# Copie o composer.json  (se existir)
+COPY composer.json ./
 
 # Instale as dependências do Composer
 RUN if [ -f "composer.json" ]; then composer install --no-dev --optimize-autoloader; fi
