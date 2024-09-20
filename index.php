@@ -6,30 +6,38 @@ use Aws\Exception\AwsException;
 use GuzzleHttp\Client;
 
 session_start();
+
 // Variáveis de ambiente para Cognito
 $cognitoDomain = getenv('COGNITO_DOMAIN');
 $clientId = getenv('COGNITO_CLIENT_ID');
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
-$msgError =  "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+$msgError = "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
 
-// Função para obter o segredo do AWS Secrets Manager (já existente)
+// Verifica se as variáveis de ambiente estão definidas
+if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri) {
+    error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
+    echo $msgError;
+    exit();
+}
+
+// Função para obter o segredo do AWS Secrets Manager
 function getSecret() {
-    $secretName = getenv('AWS_SECRET_ARN'); // Obtém o ARN do segredo da variável de ambiente
-    $region = getenv('AWS_REGION'); // Obtém a região da variável de ambiente
+    global $msgError;
+    $secretName = getenv('AWS_SECRET_ARN');
+    $region = getenv('AWS_REGION');
 
-    // Verifica se as variáveis de ambiente estão definidas
     if (!$secretName || !$region) {
         error_log("Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.");
         echo $msgError;
         return null;
     }
 
-    // Cria o cliente do Secrets Manager
     $client = new SecretsManagerClient([
         'version' => 'latest',
         'region' => $region
     ]);
+
     try {
         $result = $client->getSecretValue([
             'SecretId' => $secretName,
@@ -54,14 +62,29 @@ function getSecret() {
 if (!isset($_SESSION['id_token'])) {
     // Iniciar o processo de autenticação com Cognito se não estiver logado
     if (!isset($_GET['code'])) {
+        // Verifica se o $cognitoDomain já começa com 'http'
+        if (strpos($cognitoDomain, 'http') !== 0) {
+            $cognitoDomain = 'https://' . $cognitoDomain;
+        }
+        // Remove a barra final, se houver
+        $cognitoDomain = rtrim($cognitoDomain, '/');
+
         // Redirecionar para o login do Cognito
-        $loginUrl = "https://{$cognitoDomain}/oauth2/authorize?response_type=code&client_id={$clientId}&redirect_uri={$redirectUri}&scope=openid";
+        $loginUrl = "{$cognitoDomain}/oauth2/authorize?response_type=code&client_id={$clientId}&redirect_uri={$redirectUri}&scope=openid";
         header("Location: $loginUrl");
         exit();
     } else {
         // Trocar o código de autorização pelo token
         $code = $_GET['code'];
-        $tokenUrl = "https://{$cognitoDomain}/oauth2/token";
+
+        // Verifica se o $cognitoDomain já começa com 'http'
+        if (strpos($cognitoDomain, 'http') !== 0) {
+            $cognitoDomain = 'https://' . $cognitoDomain;
+        }
+        // Remove a barra final, se houver
+        $cognitoDomain = rtrim($cognitoDomain, '/');
+
+        $tokenUrl = "{$cognitoDomain}/oauth2/token";
         $client = new Client();
 
         try {
@@ -76,13 +99,22 @@ if (!isset($_SESSION['id_token'])) {
             ]);
 
             $body = json_decode($response->getBody(), true);
-            $_SESSION['id_token'] = $body['id_token'];
 
-            // Redirecionar de volta para a página principal
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit();
+            if (isset($body['id_token'])) {
+                $_SESSION['id_token'] = $body['id_token'];
+
+                // Redirecionar de volta para a página principal
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                // Erro ao obter o id_token
+                error_log('Erro: id_token não encontrado na resposta do Cognito.');
+                echo 'Erro durante a autenticação. Por favor, tente novamente.';
+                exit();
+            }
         } catch (\Exception $e) {
-            echo 'Erro durante a autenticação: ' . $e->getMessage();
+            error_log('Erro durante a autenticação: ' . $e->getMessage());
+            echo 'Erro durante a autenticação. Por favor, tente novamente.';
             exit();
         }
     }
@@ -92,12 +124,11 @@ if (!isset($_SESSION['id_token'])) {
 $credentials = getSecret();
 
 if ($credentials) {
-    $servername = getenv('RDS_PROXY_HOST'); // Obtém o host do RDS Proxy da variável de ambiente
-    $username = $credentials['username'];  // Pega o username do segredo
-    $password = $credentials['password'];  // Pega o password do segredo
-    $dbname = 'appref';  // Nome do banco de dados
+    $servername = getenv('RDS_PROXY_HOST');
+    $username = $credentials['username'];
+    $password = $credentials['password'];
+    $dbname = 'appref';
 
-    // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
     if (!$servername) {
         error_log("Erro: A variável de ambiente RDS_PROXY_HOST não está definida.");
         echo $msgError;
