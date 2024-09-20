@@ -16,11 +16,12 @@ $cognitoDomain = getenv('COGNITO_DOMAIN');
 $clientId = getenv('COGNITO_CLIENT_ID');
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
+$msgError =  "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema."
 
 // Verifica se as variáveis de ambiente estão definidas
 if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri) {
     error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
-    echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+    echo $msgError;
     exit();
 }
 
@@ -40,7 +41,7 @@ function getSecret() {
     // Verifica se as variáveis de ambiente estão definidas
     if (!$secretName || !$region) {
         error_log("Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.");
-        echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+        echo $msgError;
         return null;
     }
 
@@ -83,7 +84,7 @@ if ($credentials) {
     // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
     if (!$servername) {
         error_log("Erro: A variável de ambiente RDS_PROXY_HOST não está definida.");
-        echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+        echo $msgError;
         exit();
     }
 
