@@ -1,5 +1,7 @@
 <?php
-require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
+
+include 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
+require 'autoload.php'
 
 session_start();
 

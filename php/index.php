@@ -1,5 +1,6 @@
 <?php
-require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
+include 'vendor/autoload.php';
+require 'autoload.php'
 use Aws\SecretsManager\SecretsManagerClient;
 
 session_start();
