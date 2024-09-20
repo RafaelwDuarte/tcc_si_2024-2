@@ -4,6 +4,12 @@ require 'vendor/autoload.php';
 use Aws\SecretsManager\SecretsManagerClient;
 use Aws\Exception\AwsException;
 
+if (class_exists('Aws\SecretsManager\SecretsManagerClient')) {
+    echo 'SecretsManagerClient está disponível.';
+} else {
+    echo 'SecretsManagerClient não foi encontrado.';
+}
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -11,7 +17,7 @@ error_reporting(E_ALL);
 // Teste rápido
 $client = new SecretsManagerClient([
     'version' => 'latest',
-    'region'  => 'us-east-1', // Substitua pela sua região
+    'region'  => 'us-east-1',
 ]);
 
 echo 'AWS SDK está funcionando!';
