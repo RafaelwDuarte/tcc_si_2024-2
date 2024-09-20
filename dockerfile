@@ -13,8 +13,8 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Defina o diretório de trabalho
 WORKDIR /var/www/html
 
-# Copie o composer.json e o composer.lock para o diretório de trabalho
-COPY composer.json composer.lock ./
+# Copie o composer.json para o diretório de trabalho
+COPY composer.json ./
 
 # Instale as dependências do Composer
 RUN composer install --no-dev --no-interaction --prefer-dist
