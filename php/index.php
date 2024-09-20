@@ -2,7 +2,6 @@
 require 'vendor/autoload.php'; // Carregar o autoload do AWS SDK for PHP
 use Aws\SecretsManager\SecretsManagerClient;
 
-
 session_start();
 
 // Variáveis de ambiente para Cognito
