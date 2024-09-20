@@ -62,13 +62,6 @@ function getSecret() {
 if (!isset($_SESSION['id_token'])) {
     // Iniciar o processo de autenticação com Cognito se não estiver logado
     if (!isset($_GET['code'])) {
-        // Verifica se o $cognitoDomain já começa com 'http'
-        if (strpos($cognitoDomain, 'http') !== 0) {
-            $cognitoDomain = 'https://' . $cognitoDomain;
-        }
-        // Remove a barra final, se houver
-        $cognitoDomain = rtrim($cognitoDomain, '/');
-
         // Redirecionar para o login do Cognito
         $loginUrl = "{$cognitoDomain}/oauth2/authorize?response_type=code&client_id={$clientId}&redirect_uri={$redirectUri}&scope=openid";
         header("Location: $loginUrl");
