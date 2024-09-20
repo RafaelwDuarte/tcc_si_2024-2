@@ -17,6 +17,13 @@ WORKDIR /var/www/html
 COPY composer.json ./
 
 # Instale as dependências do Composer
+RUN apt-get update && apt-get install -y \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    pkg-config \
+    libsslcommon2-dev \
+    && docker-php-ext-install curl mbstring
+
 RUN composer install --no-dev --no-interaction --prefer-dist
 
 # Copie o código da aplicação PHP para o diretório de trabalho

@@ -4,6 +4,10 @@ require 'vendor/autoload.php';
 use Aws\SecretsManager\SecretsManagerClient;
 use Aws\Exception\AwsException;
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Teste rápido
 $client = new SecretsManagerClient([
     'version' => 'latest',
