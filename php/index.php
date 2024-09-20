@@ -4,36 +4,30 @@ require 'vendor/autoload.php';
 use Aws\SecretsManager\SecretsManagerClient;
 use Aws\Exception\AwsException;
 
-if (class_exists('Aws\SecretsManager\SecretsManagerClient')) {
-    echo 'SecretsManagerClient está disponível.';
-} else {
-    echo 'SecretsManagerClient não foi encontrado.';
-}
+session_start();
 
+// Configurações de exibição de erros (opcional para depuração)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
-// Teste rápido
-$client = new SecretsManagerClient([
-    'version' => 'latest',
-    'region'  => 'us-east-1',
-]);
-
-echo 'AWS SDK está funcionando!';
-
-session_start();
 
 // Variáveis de ambiente para Cognito
 $cognitoDomain = getenv('COGNITO_DOMAIN');
 $clientId = getenv('COGNITO_CLIENT_ID');
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
-$authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid email";
+
+// Verifica se as variáveis de ambiente estão definidas
+if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri) {
+    error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
+    echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+    exit();
+}
 
 // Verificar se o usuário já está autenticado
-if (!isset($_SESSION['user_logged_in'])) {
+if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
     // Se não estiver autenticado, redirecionar para o Cognito
+    $authorizationUrl = "$cognitoDomain/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid+email";
     header("Location: $authorizationUrl");
     exit();
 }
@@ -45,7 +39,8 @@ function getSecret() {
 
     // Verifica se as variáveis de ambiente estão definidas
     if (!$secretName || !$region) {
-        echo "Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.";
+        error_log("Erro: As variáveis de ambiente AWS_SECRET_ARN ou AWS_REGION não estão definidas.");
+        echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
         return null;
     }
 
@@ -69,69 +64,10 @@ function getSecret() {
         return json_decode($secret, true);
 
     } catch (AwsException $e) {
-        // Exibir mensagem de erro em caso de falha
-        echo $e->getMessage();
+        // Registra o erro e exibe uma mensagem amigável
+        error_log('Erro ao obter o segredo: ' . $e->getMessage());
+        echo "Não foi possível recuperar as credenciais do Secrets Manager.";
         return null;
-    }
-}
-
-// Função para trocar o código de autorização por um token
-function getTokens($code) {
-    global $clientId, $clientSecret, $redirectUri, $cognitoDomain;
-
-    $tokenUrl = "$cognitoDomain/oauth2/token";
-    $postData = [
-        'grant_type' => 'authorization_code',
-        'client_id' => $clientId,
-        'code' => $code,
-        'redirect_uri' => $redirectUri,
-    ];
-
-    $ch = curl_init($tokenUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Basic ' . base64_encode("$clientId:$clientSecret"),
-        'Content-Type: application/x-www-form-urlencoded',
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($httpCode == 200) {
-        return json_decode($response, true);
-    } else {
-        // Registra o erro e retorna null
-        $errorMessage = "Erro ao obter o token.\n";
-        $errorMessage .= "Código HTTP: " . $httpCode . "\n";
-        if ($curlError) {
-            $errorMessage .= "Erro cURL: " . $curlError . "\n";
-        }
-        $errorMessage .= "Resposta completa do servidor: \n" . $response;
-        error_log($errorMessage);
-        return null;
-    }
-}
-
-
-// Se o código de autorização foi retornado, troque-o por tokens
-if (isset($_GET['code'])) {
-    $code = $_GET['code'];
-    $tokenData = getTokens($code);
-
-    if (isset($tokenData['id_token'])) {
-        // Salvar o token na sessão
-        $_SESSION['id_token'] = $tokenData['id_token'];
-        $_SESSION['user_logged_in'] = true;
-
-        // Redirecionar de volta para a página inicial
-        header("Location: /");
-        exit();
-    } else {
-        echo "Erro ao obter o token.";
     }
 }
 
@@ -146,8 +82,9 @@ if ($credentials) {
 
     // Verifica se a variável de ambiente RDS_PROXY_HOST está definida
     if (!$servername) {
-        echo "Erro: A variável de ambiente RDS_PROXY_HOST não está definida.";
-        exit;
+        error_log("Erro: A variável de ambiente RDS_PROXY_HOST não está definida.");
+        echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+        exit();
     }
 
     // Criar conexão
@@ -235,7 +172,7 @@ if ($credentials) {
     // Verificar a conexão
     if ($conn->connect_error) {
         echo '<div class="alert alert-danger" role="alert">
-                Conexão falhou: ' . $conn->connect_error . '
+                Conexão falhou: ' . htmlspecialchars($conn->connect_error) . '
               </div>';
     } else {
         echo '<div class="alert alert-success" role="alert">

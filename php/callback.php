@@ -9,6 +9,13 @@ $clientId = getenv('COGNITO_CLIENT_ID');
 $clientSecret = getenv('COGNITO_CLIENT_SECRET');
 $redirectUri = getenv('COGNITO_REDIRECT_URI');
 
+// Verifica se as variáveis de ambiente estão definidas
+if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri) {
+    error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
+    echo "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
+    exit();
+}
+
 // Verifica se o código foi retornado como parte da URL de redirecionamento
 if (isset($_GET['code'])) {
     $code = $_GET['code'];
@@ -48,21 +55,23 @@ if (isset($_GET['code'])) {
         header("Location: /");
         exit();
     } else {
-        // Exibir informações detalhadas de erro
-        echo "Erro ao obter o token.<br>";
-        echo "Código HTTP: " . $httpCode . "<br>";
+        // Registra informações detalhadas de erro
+        $errorMessage = "Erro ao obter o token.\n";
+        $errorMessage .= "Código HTTP: " . $httpCode . "\n";
 
         if ($curlError) {
-            echo "Erro cURL: " . $curlError . "<br>";
+            $errorMessage .= "Erro cURL: " . $curlError . "\n";
         }
 
-        // Exibir a resposta completa do Cognito para debug
-        echo "Resposta completa do servidor: <br>";
-        echo "<pre>";
-        print_r($tokenData);
-        echo "</pre>";
+        $errorMessage .= "Resposta completa do servidor: \n" . print_r($tokenData, true);
+        error_log($errorMessage);
+
+        // Exibe uma mensagem amigável ao usuário
+        echo "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.";
+        exit();
     }
 } else {
     echo "Código de autorização não encontrado.";
+    exit();
 }
 ?>
