@@ -1,19 +1,19 @@
 # Use a imagem PHP oficial com Apache
 FROM php:8.1-apache
 
-# Instale as extensões necessárias para o MySQL
-RUN docker-php-ext-install mysqli
-
-# Instale o unzip e outras dependências necessárias
+# Instale os pacotes de desenvolvimento necessários e as extensões PHP
 RUN apt-get update && apt-get install -y \
-    unzip \
+    libonig-dev \
+    libxml2-dev \
     libcurl4-openssl-dev \
-    libssl-dev \
+    unzip \
     pkg-config \
-    libxml2-dev
-
-# Instale as extensões PHP necessárias
-RUN docker-php-ext-install curl mbstring xml
+    git \
+    && docker-php-ext-install \
+    mysqli \
+    curl \
+    mbstring \
+    xml
 
 # Instale o Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
