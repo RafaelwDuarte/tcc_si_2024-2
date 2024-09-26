@@ -147,11 +147,12 @@ if ($credentials) {
                 margin-top: 50px;
             }
             .badge-container {
-                text-align: center;
-                margin-bottom: 20px;
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
             }
             .badge-container img {
-                max-width: 100%;
+                max-width: 150px;
                 height: auto;
             }
             .btn-custom {
@@ -175,17 +176,47 @@ if ($credentials) {
                 Conectado com sucesso ao MySQL via Proxy RDS!
               </div>';
 
-        // Badge do SonarCloud
-        echo '<div class="badge-container">
-                <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
-              </div>';
-
         // Formulários
         echo '<form method="post" class="form-inline">
                 <button type="submit" name="ver_usuarios" class="btn btn-primary btn-custom">Ver Usuários</button>
                 <input type="text" name="search_email" class="form-control mb-2 mr-sm-2" placeholder="Pesquisar por email" />
                 <button type="submit" class="btn btn-success mb-2">Buscar</button>
               </form>';
+
+        // Formulário para inserir usuário
+        echo '<form method="post" class="form-inline">
+                <input type="text" name="insert_name" class="form-control mb-2 mr-sm-2" placeholder="Nome" required />
+                <input type="email" name="insert_email" class="form-control mb-2 mr-sm-2" placeholder="Email" required />
+                <button type="submit" name="inserir_usuario" class="btn btn-secondary mb-2">Inserir Usuário</button>
+              </form>';
+
+        // Inserir usuário na tabela
+        if (isset($_POST['inserir_usuario'])) {
+            $name = $_POST['insert_name'];
+            $email = $_POST['insert_email'];
+
+            // Validar os dados de entrada
+            if (!empty($name) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                // Preparar declaração SQL para evitar SQL Injection
+                $stmt = $conn->prepare("INSERT INTO users (name, email) VALUES (?, ?)");
+                $stmt->bind_param("ss", $name, $email);
+
+                if ($stmt->execute()) {
+                    echo '<div class="alert alert-success" role="alert">
+                            Usuário inserido com sucesso!
+                          </div>';
+                } else {
+                    echo '<div class="alert alert-danger" role="alert">
+                            Erro ao inserir o usuário: ' . htmlspecialchars($stmt->error) . '
+                          </div>';
+                }
+                $stmt->close();
+            } else {
+                echo '<div class="alert alert-warning" role="alert">
+                        Por favor, insira um nome válido e um email válido.
+                      </div>';
+            }
+        }
 
         // Exibir os dados da tabela apenas se o botão for clicado
         if (isset($_POST['ver_usuarios'])) {
@@ -257,6 +288,10 @@ if ($credentials) {
     }
 
     echo '</div>
+    <!-- Badge do SonarCloud -->
+    <div class="badge-container">
+        <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
+    </div>
     <!-- Importando o Bootstrap JS e dependências -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
