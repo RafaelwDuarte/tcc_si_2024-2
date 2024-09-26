@@ -23,14 +23,18 @@ $nivel1GroupName = getenv('COGNITO_GROUP_NIVEL1'); // Nome do grupo de nível 1
 $msgError = "Ocorreu um erro de configuração. Por favor, contate o administrador do sistema.";
 
 // Verifica se as variáveis de ambiente estão definidas
-if (!$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri || !$userPoolId || !$region || !$adminGroupName || !$nivel1GroupName) {
+if (
+    !$cognitoDomain || !$clientId || !$clientSecret || !$redirectUri ||
+    !$userPoolId || !$region || !$adminGroupName || !$nivel1GroupName
+) {
     error_log('Erro: Variáveis de ambiente para o Cognito não estão definidas corretamente.');
     echo $msgError;
     exit();
 }
 
 // Função para obter o segredo do AWS Secrets Manager
-function getSecret() {
+function getSecret()
+{
     global $msgError;
     $secretName = getenv('AWS_SECRET_ARN');
     $region = getenv('AWS_REGION');
@@ -58,7 +62,6 @@ function getSecret() {
         }
 
         return json_decode($secret, true);
-
     } catch (AwsException $e) {
         error_log('Erro ao obter o segredo: ' . $e->getMessage());
         echo "Não foi possível recuperar as credenciais do Secrets Manager.";
@@ -67,7 +70,8 @@ function getSecret() {
 }
 
 // Função para encerrar a sessão e redirecionar para o logout do Cognito
-function logout() {
+function logout()
+{
     global $cognitoDomain, $clientId, $redirectUri;
     session_unset();
     session_destroy();
@@ -131,18 +135,23 @@ if (!isset($_SESSION['id_token'])) {
                     'region' => $region,
                 ]);
 
-                // Obter os grupos do usuário
-                $result = $cognitoClient->adminListGroupsForUser([
-                    'UserPoolId' => $userPoolId,
-                    'Username' => $_SESSION['username'],
-                ]);
+                try {
+                    // Obter os grupos do usuário
+                    $result = $cognitoClient->adminListGroupsForUser([
+                        'UserPoolId' => $userPoolId,
+                        'Username' => $_SESSION['username'],
+                    ]);
 
-                $userGroups = [];
-                foreach ($result['Groups'] as $group) {
-                    $userGroups[] = $group['GroupName'];
+                    $userGroups = [];
+                    foreach ($result['Groups'] as $group) {
+                        $userGroups[] = $group['GroupName'];
+                    }
+
+                    $_SESSION['user_groups'] = $userGroups;
+                } catch (AwsException $e) {
+                    error_log('Erro ao obter os grupos do usuário: ' . $e->getMessage());
+                    $_SESSION['user_groups'] = []; // Inicializar como array vazio
                 }
-
-                $_SESSION['user_groups'] = $userGroups;
 
                 // Redirecionar de volta para a página principal
                 header('Location: ' . $_SERVER['PHP_SELF']);
@@ -186,12 +195,63 @@ if ($credentials) {
     ]);
 
     // Verificar se o usuário pertence ao grupo de administradores
-    $isAdmin = in_array($adminGroupName, $_SESSION['user_groups']);
+    $isAdmin = in_array($adminGroupName, $_SESSION['user_groups'] ?? []);
 
-    // Processamento do formulário de edição de usuário (apenas para administradores)
+    // Processamento do formulário de edição de usuário (quando o usuário clica em "Salvar Alterações")
     if ($isAdmin && isset($_POST['editar_usuario'])) {
-        // Código para editar usuário (mesmo que antes)
-        // ...
+        $usernameToEdit = $_POST['user_to_edit'];
+        $newEmail = $_POST['new_email'];
+        $newPassword = $_POST['new_password'];
+        $newStatus = $_POST['new_status'];
+
+        try {
+            // Atualizar atributos do usuário
+            $cognitoClient->adminUpdateUserAttributes([
+                'UserPoolId' => $userPoolId,
+                'Username' => $usernameToEdit,
+                'UserAttributes' => [
+                    [
+                        'Name' => 'email',
+                        'Value' => $newEmail,
+                    ],
+                    [
+                        'Name' => 'email_verified',
+                        'Value' => 'true',
+                    ],
+                ],
+            ]);
+
+            // Alterar senha, se fornecida
+            if (!empty($newPassword)) {
+                $cognitoClient->adminSetUserPassword([
+                    'UserPoolId' => $userPoolId,
+                    'Username' => $usernameToEdit,
+                    'Password' => $newPassword,
+                    'Permanent' => true,
+                ]);
+            }
+
+            // Alterar status
+            if ($newStatus === 'enable') {
+                $cognitoClient->adminEnableUser([
+                    'UserPoolId' => $userPoolId,
+                    'Username' => $usernameToEdit,
+                ]);
+            } else {
+                $cognitoClient->adminDisableUser([
+                    'UserPoolId' => $userPoolId,
+                    'Username' => $usernameToEdit,
+                ]);
+            }
+
+            echo '<div class="alert alert-success" role="alert">
+                    Usuário atualizado com sucesso!
+                  </div>';
+        } catch (AwsException $e) {
+            echo '<div class="alert alert-danger" role="alert">
+                    Erro ao atualizar o usuário: ' . htmlspecialchars($e->getAwsErrorMessage()) . '
+                  </div>';
+        }
     }
 
     // Início do layout HTML
@@ -261,18 +321,106 @@ if ($credentials) {
 
         // Se o usuário é administrador, pode gerenciar usuários
         if ($isAdmin && isset($_POST['gerenciar_usuarios'])) {
-            // Código para gerenciar usuários (mesmo que antes)
-            // ...
+            try {
+                $users = [];
+                $result = $cognitoClient->listUsers([
+                    'UserPoolId' => $userPoolId,
+                ]);
+
+                foreach ($result['Users'] as $user) {
+                    $attributes = [];
+                    foreach ($user['Attributes'] as $attribute) {
+                        $attributes[$attribute['Name']] = $attribute['Value'];
+                    }
+                    $users[] = [
+                        'Username' => $user['Username'],
+                        'Email' => isset($attributes['email']) ? $attributes['email'] : '',
+                        'Enabled' => $user['Enabled'],
+                    ];
+                }
+
+                // Exibir tabela de usuários
+                echo '<h3>Gerenciar Usuários</h3>
+                      <div class="table-responsive">
+                        <table class="table table-striped mt-3">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Nome de Usuário</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>';
+                foreach ($users as $user) {
+                    echo '<tr>
+                            <td>' . htmlspecialchars($user['Username']) . '</td>
+                            <td>' . htmlspecialchars($user['Email']) . '</td>
+                            <td>' . ($user['Enabled'] ? 'Ativo' : 'Desabilitado') . '</td>
+                            <td>
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="user_to_edit" value="' . htmlspecialchars($user['Username']) . '"/>
+                                    <button type="submit" name="editar_usuario_form" class="btn btn-sm btn-primary">Editar</button>
+                                </form>
+                            </td>
+                          </tr>';
+                }
+                echo '</tbody></table></div>';
+            } catch (AwsException $e) {
+                echo '<div class="alert alert-danger" role="alert">
+                        Erro ao listar os usuários: ' . htmlspecialchars($e->getAwsErrorMessage()) . '
+                      </div>';
+            }
         }
 
         // Exibir o formulário de edição de usuário (apenas para administradores)
         if ($isAdmin && isset($_POST['editar_usuario_form'])) {
-            // Código para exibir o formulário de edição de usuário (mesmo que antes)
-            // ...
+            $usernameToEdit = $_POST['user_to_edit'];
+
+            // Obter detalhes do usuário
+            try {
+                $result = $cognitoClient->adminGetUser([
+                    'UserPoolId' => $userPoolId,
+                    'Username' => $usernameToEdit,
+                ]);
+
+                $attributes = [];
+                foreach ($result['UserAttributes'] as $attribute) {
+                    $attributes[$attribute['Name']] = $attribute['Value'];
+                }
+
+                $email = isset($attributes['email']) ? $attributes['email'] : '';
+                $status = $result['Enabled'] ? 'Ativo' : 'Desabilitado';
+
+                // Exibir formulário de edição
+                echo '<h3>Editar Usuário: ' . htmlspecialchars($usernameToEdit) . '</h3>
+                      <form method="post">
+                          <input type="hidden" name="user_to_edit" value="' . htmlspecialchars($usernameToEdit) . '"/>
+                          <div class="form-group">
+                              <label>Email:</label>
+                              <input type="email" name="new_email" class="form-control" value="' . htmlspecialchars($email) . '" required />
+                          </div>
+                          <div class="form-group">
+                              <label>Nova Senha (deixe em branco para não alterar):</label>
+                              <input type="password" name="new_password" class="form-control" />
+                          </div>
+                          <div class="form-group">
+                              <label>Status:</label>
+                              <select name="new_status" class="form-control">
+                                  <option value="enable" ' . ($status === 'Ativo' ? 'selected' : '') . '>Ativo</option>
+                                  <option value="disable" ' . ($status === 'Desabilitado' ? 'selected' : '') . '>Desabilitado</option>
+                              </select>
+                          </div>
+                          <button type="submit" name="editar_usuario" class="btn btn-primary">Salvar Alterações</button>
+                      </form>';
+            } catch (AwsException $e) {
+                echo '<div class="alert alert-danger" role="alert">
+                        Erro ao obter detalhes do usuário: ' . htmlspecialchars($e->getAwsErrorMessage()) . '
+                      </div>';
+            }
         }
 
         // Resto do seu código existente para inserir e visualizar usuários no banco de dados
-        // ...
 
         // Formulário para inserir usuário (apenas para administradores)
         if ($isAdmin) {
