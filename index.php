@@ -247,13 +247,13 @@ if ($credentials) {
 
         // Botões de ação
         echo '<form method="post" class="form-inline">';
-        echo '<button type="submit" name="ver_usuarios" class="btn btn-primary btn-custom">Ver Usuários</button>';
+        echo '<button type="submit" name="ver_usuarios" class="btn btn-primary btn-custom">Ver Usuários MYSQL</button>';
         echo '<input type="text" name="search_email" class="form-control mb-2 mr-sm-2" placeholder="Pesquisar por email" />';
         echo '<button type="submit" class="btn btn-success mb-2">Buscar</button>';
 
         // Exibir botão de Gerenciar Usuários apenas para administradores
         if ($isAdmin) {
-            echo '<button type="submit" name="gerenciar_usuarios" class="btn btn-warning btn-custom">Gerenciar Usuários</button>';
+            echo '<button type="submit" name="gerenciar_usuarios" class="btn btn-warning btn-custom">Gerenciar Usuários Cognito</button>';
         }
 
         echo '<button type="submit" name="logout" class="btn btn-danger mb-2 ml-auto">Logout</button>';
