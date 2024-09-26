@@ -137,7 +137,30 @@ if ($credentials) {
     <head>
         <meta charset="UTF-8">
         <title>App_Refact</title>
-        <style>/* ... estilos de layout ... */</style>
+        <!-- Importando o Bootstrap CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        <style>
+            body {
+                background-color: #f8f9fa;
+            }
+            .container {
+                margin-top: 50px;
+            }
+            .badge-container {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            .badge-container img {
+                max-width: 100%;
+                height: auto;
+            }
+            .btn-custom {
+                margin-right: 10px;
+            }
+            .table-responsive {
+                margin-top: 20px;
+            }
+        </style>
     </head>
     <body>
     <div class="container">';
@@ -157,15 +180,11 @@ if ($credentials) {
                 <img src="https://sonarcloud.io/api/project_badges/quality_gate?project=RafaelwDuarte_tcc_si_2024-2" alt="Quality Gate Status" />
               </div>';
 
-        // Botão para ver usuários
-        echo '<form method="post">
-                <button type="submit" name="ver_usuarios" class="btn">Ver Usuários</button>
-              </form>';
-
-        // Caixa de pesquisa por email
-        echo '<form method="post">
-                <input type="text" name="search_email" placeholder="Pesquisar por email" />
-                <button type="submit" class="btn">Buscar</button>
+        // Formulários
+        echo '<form method="post" class="form-inline">
+                <button type="submit" name="ver_usuarios" class="btn btn-primary btn-custom">Ver Usuários</button>
+                <input type="text" name="search_email" class="form-control mb-2 mr-sm-2" placeholder="Pesquisar por email" />
+                <button type="submit" class="btn btn-success mb-2">Buscar</button>
               </form>';
 
         // Exibir os dados da tabela apenas se o botão for clicado
@@ -174,15 +193,16 @@ if ($credentials) {
             $result = $conn->query($sql);
 
             if ($result && $result->num_rows > 0) {
-                echo '<table class="table table-striped mt-3">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>';
+                echo '<div class="table-responsive">
+                        <table class="table table-striped mt-3">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>';
                 while ($row = $result->fetch_assoc()) {
                     echo '<tr>
                             <td>' . htmlspecialchars($row["id"]) . '</td>
@@ -190,7 +210,7 @@ if ($credentials) {
                             <td>' . htmlspecialchars($row["email"]) . '</td>
                           </tr>';
                 }
-                echo '</tbody></table>';
+                echo '</tbody></table></div>';
             } else {
                 echo '<div class="alert alert-info" role="alert">
                         Nenhum dado encontrado.
@@ -200,20 +220,25 @@ if ($credentials) {
 
         // Exibir os resultados da pesquisa de email
         if (isset($_POST['search_email']) && !empty($_POST['search_email'])) {
-            $email = $conn->real_escape_string($_POST['search_email']);
-            $sql = "SELECT id, name, email FROM users WHERE email = '$email'";
-            $result = $conn->query($sql);
+            $email = $_POST['search_email'];
+
+            // Preparar declaração SQL para evitar SQL Injection
+            $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE email = ?");
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
             if ($result && $result->num_rows > 0) {
-                echo '<table class="table table-striped mt-3">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>';
+                echo '<div class="table-responsive">
+                        <table class="table table-striped mt-3">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>';
                 while ($row = $result->fetch_assoc()) {
                     echo '<tr>
                             <td>' . htmlspecialchars($row["id"]) . '</td>
@@ -221,16 +246,23 @@ if ($credentials) {
                             <td>' . htmlspecialchars($row["email"]) . '</td>
                           </tr>';
                 }
-                echo '</tbody></table>';
+                echo '</tbody></table></div>';
             } else {
                 echo '<div class="alert alert-info" role="alert">
                         Nenhum dado encontrado para o email: ' . htmlspecialchars($email) . '
                       </div>';
             }
+            $stmt->close();
         }
     }
 
-    echo '</div></body></html>';
+    echo '</div>
+    <!-- Importando o Bootstrap JS e dependências -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </body>
+    </html>';
 
     $conn->close();
 } else {
